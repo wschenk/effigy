@@ -48,6 +48,8 @@ export class DenoStore extends BlobStore {
   ): Promise<Blob> {
     const entries = new Array<Blob>();
 
+    console.log(`create from directory - ${dir}`);
+
     for await (const entry of Deno.readDir(dir)) {
       const fullPath = `${dir}/${entry.name}`;
       const stat = await Deno.stat(fullPath);
@@ -59,19 +61,28 @@ export class DenoStore extends BlobStore {
           stat.mtime,
         );
 
-        console.log(blobMeta);
         const blob = await this.writeMeta(blobMeta);
+        entries.push(blob);
+        console.log(`${blob.hash} - ${fullPath}`);
+      }
+
+      if (entry.isDirectory) {
+        const blob = await this.createBlobFromDirectory(
+          fullPath,
+          entry.name,
+        );
+
         entries.push(blob);
       }
     }
 
     let mtime: Date | undefined = undefined;
     let dirStat = undefined;
-    if (name) {
-      dirStat = await Deno.stat(`${dir}/${name}`);
-    } else {
-      dirStat = await Deno.stat(dir);
-    }
+    // if (name) {
+    // dirStat = await Deno.stat(`${dir}/${name}`);
+    // } else {
+    dirStat = await Deno.stat(dir);
+    // }
 
     if (dirStat && dirStat.mtime) {
       mtime = dirStat.mtime;
@@ -86,8 +97,8 @@ export class DenoStore extends BlobStore {
       mtime,
     };
 
-    console.log(meta);
     const hash = await this.writeMeta(meta);
+    console.log(`${hash.hash} - ${dir}`);
     return hash;
   }
 

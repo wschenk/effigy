@@ -65,11 +65,14 @@ export abstract class BlobStore {
     }
     return keys;
   }
+
+  async walkTree(root: Blob) {
+    const dir = await this.getBlobAsMeta(root);
+    console.log(dir);
+  }
 }
 
 export function blobSetSub(a: Blob[], b: Blob[]): Blob[] {
-  const ret = new Array<Blob>();
-
   const hashSet = new Set(a.map((x) => x.hash));
 
   return b.filter((x) => hashSet.has(x.hash));

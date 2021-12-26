@@ -1,64 +1,64 @@
 import { blobSetSub } from "./blob.ts";
 import { DenoStore } from "./deno_files.ts";
-import { parse } from "./deps.ts";
+import { cac } from "https://unpkg.com/cac/mod.ts";
 
-const args = parse(Deno.args);
+const cli = cac("effigy");
 
-switch (args._[0]) {
-  case "snap":
-    if (typeof args._[1] === "string") {
-      await snap(args._[1]);
+cli
+  .command("snap <dir>", "Snap a directory into the repo")
+  .action(async (dir: string) => {
+    console.log(`Snapping ${dir}`);
+
+    const store = new DenoStore("/Users/wschenk/.effigy");
+    const blob = await store.createBlobFromDirectory(dir);
+
+    console.log(blob);
+  });
+
+cli
+  .command("keys <hash>", "Show keys referenced by a hash")
+  .action(async (hash: string) => {
+    const store = new DenoStore("/Users/wschenk/.effigy");
+
+    const meta = await store.getBlobAsMeta({ hash });
+
+    if (meta) {
+      console.log(await store.allSubKeys(meta));
     }
-    break;
-  case "keys":
-    if (typeof args._[1] === "string") {
-      await keys(args._[1]);
-    }
-    break;
-  case "diff":
-    if (typeof args._[1] === "string" && typeof args._[2] === "string") {
-      await diff(args._[1], args._[2]);
-    } else {
-      console.log("Not enough arguments");
-    }
-    break;
-  default:
-    console.log("Unknown command");
-    break;
-}
+  });
 
-export async function snap(dir = "workspace") {
-  console.log(`Snapping ${dir}`);
+cli
+  .command(
+    "diff <first> <second>",
+    "Show the new keys defined in the first not in the second",
+  )
+  .action(async (first: string, second: string) => {
+    const store = new DenoStore("/Users/wschenk/.effigy");
 
-  const store = new DenoStore("/Users/wschenk/.effigy");
-  const blob = await store.createBlobFromDirectory(dir);
+    const firstMeta = await store.getBlobAsMeta({ hash: first });
+    const firstKeys = await store.allSubKeys(firstMeta);
+    const secondMeta = await store.getBlobAsMeta({ hash: second });
+    const secondKeys = await store.allSubKeys(secondMeta);
 
-  console.log(blob);
-}
+    console.log("Newer Set");
+    console.log(secondKeys);
 
-export async function keys(hash: string) {
-  const store = new DenoStore("/Users/wschenk/.effigy");
+    console.log("Previous set");
+    console.log(firstKeys);
+    console.log("Difference:");
+    console.log(blobSetSub(secondKeys, firstKeys));
+  });
 
-  const meta = await store.getBlobAsMeta({ hash });
+cli
+  .command(
+    "write <root> <dir>",
+    "Write the tree defined at root into dir",
+  )
+  .action(async (root: string, dir: string) => {
+    const store = new DenoStore("/Users/wschenk/.effigy");
 
-  if (meta) {
-    console.log(await store.allSubKeys(meta));
-  }
-}
+    await store.walkTree({ hash: root });
+  });
 
-export async function diff(first: string, second: string) {
-  const store = new DenoStore("/Users/wschenk/.effigy");
-
-  const firstMeta = await store.getBlobAsMeta({ hash: first });
-  const firstKeys = await store.allSubKeys(firstMeta);
-  const secondMeta = await store.getBlobAsMeta({ hash: second });
-  const secondKeys = await store.allSubKeys(secondMeta);
-
-  console.log("Newer Set");
-  console.log(secondKeys);
-
-  console.log("Previous set");
-  console.log(firstKeys);
-  console.log("Difference:");
-  console.log(blobSetSub(secondKeys, firstKeys));
-}
+cli.help();
+cli.parse();
