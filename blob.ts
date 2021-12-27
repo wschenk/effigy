@@ -29,7 +29,7 @@ export function decodeMeta(data: Uint8Array): BlobMeta {
   const decoder = new TextDecoder();
   const jsonString = decoder.decode(data);
   const result = JSON.parse(jsonString);
-  console.log(result);
+  // console.log(result);
   return {
     name: result.name,
     size: result.size,
@@ -47,28 +47,34 @@ export abstract class BlobStore {
   abstract getBlobAsData(blob: Blob): Promise<Uint8Array>;
   abstract getBlobAsMeta(blob: Blob): Promise<BlobMeta>;
 
-  async allSubKeys(root: BlobMeta): Promise<Blob[]> {
+  async allSubKeys(root: Blob): Promise<Blob[]> {
     const keys = new Array<Blob>();
 
-    for (const blob of root.hashes) {
-      keys.push(blob);
-
-      const meta = await this.getBlobAsMeta(blob);
-
-      if (meta.collection) {
-        console.log("Not dealing with this directory");
-      }
-
+    await this.walkTree(root, (hash: Blob, meta: BlobMeta) => {
+      keys.push(hash);
       for (const file of meta.hashes) {
         keys.push(file);
       }
-    }
+    });
+
     return keys;
   }
 
-  async walkTree(root: Blob) {
-    const dir = await this.getBlobAsMeta(root);
-    console.log(dir);
+  async walkTree(
+    hash: Blob,
+    callBack: (hash: Blob, meta: BlobMeta) => void,
+  ) {
+    const root = await this.getBlobAsMeta(hash);
+    console.log(`Adding ${root.name}`);
+    console.log(root.name);
+
+    callBack(hash, root);
+
+    if (root.collection) {
+      for (const blob of root.hashes) {
+        await this.walkTree(blob, callBack);
+      }
+    }
   }
 }
 

@@ -20,11 +20,7 @@ cli
   .action(async (hash: string) => {
     const store = new DenoStore("/Users/wschenk/.effigy");
 
-    const meta = await store.getBlobAsMeta({ hash });
-
-    if (meta) {
-      console.log(await store.allSubKeys(meta));
-    }
+    console.log(await store.allSubKeys({ hash }));
   });
 
 cli
@@ -35,10 +31,8 @@ cli
   .action(async (first: string, second: string) => {
     const store = new DenoStore("/Users/wschenk/.effigy");
 
-    const firstMeta = await store.getBlobAsMeta({ hash: first });
-    const firstKeys = await store.allSubKeys(firstMeta);
-    const secondMeta = await store.getBlobAsMeta({ hash: second });
-    const secondKeys = await store.allSubKeys(secondMeta);
+    const firstKeys = await store.allSubKeys({ hash: first });
+    const secondKeys = await store.allSubKeys({ hash: second });
 
     console.log("Newer Set");
     console.log(secondKeys);
@@ -57,8 +51,11 @@ cli
   .action(async (root: string, dir: string) => {
     const store = new DenoStore("/Users/wschenk/.effigy");
 
-    await store.walkTree({ hash: root });
+    await store.walkTree({ hash: root }, (hash, meta) => {
+      console.log(`Should write ${meta.name}`);
+    });
   });
 
 cli.help();
+// cli.default( () => console.log( "run help" ))
 cli.parse();
